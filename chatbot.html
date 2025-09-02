@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+    <title>🤖 Friday AI - Coding Assistant</title>
+    <meta name="description" content="Smart AI coder powered by LLaMA3" />
+
+    <!-- Prism.js for Syntax Highlighting -->
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js" defer></script>
+
+    <!-- Marked for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+
+    <style>
+      :root {
+        --bg-primary: #121212;
+        --bg-secondary: #1c1c1c;
+        --border: #2a2a2a;
+        --text: #ffffff;
+        --shadow: rgba(0, 191, 255, 0.15);
+        --accent-user: #007bff;
+        --accent-assistant: #00e676;
+        --btn-primary: #00bfff;
+        --btn-hover: #00a3cc;
+        --input-bg: #2a2a2a;
+      }
+
+      .light-mode {
+        --bg-primary: #f5f5f5;
+        --bg-secondary: #ffffff;
+        --border: #ddd;
+        --text: #121212;
+        --shadow: rgba(0, 0, 0, 0.1);
+        --accent-user: #0056b3;
+        --accent-assistant: #00c853;
+        --btn-primary: #0099ff;
+        --btn-hover: #0077cc;
+        --input-bg: #f0f0f0;
+      }
+
+      body {
+        background-color: var(--bg-primary);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+        touch-action: manipulation;
+      }
+
+      header {
+        padding: 16px 20px;
+        text-align: center;
+        backdrop-filter: blur(4px);
+      }
+
+      header h1 {
+        color: var(--btn-primary);
+        margin: 0;
+        font-size: 1.8rem;
+        font-weight: 600;
+        text-shadow: 0 0 8px rgba(0, 191, 255, 0.3);
+      }
+
+      header p {
+        font-size: 0.85rem;
+        opacity: 0.7;
+      }
+
+      .chat {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .message {
+        max-inline-size: min(80%, max-content);
+        min-inline-size: 30%;
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-left-width: 5px;
+        border-radius: 12px;
+        padding: 14px 18px;
+        position: relative;
+        box-shadow: 0 0 12px var(--shadow);
+        line-height: 1.5;
+        font-size: 15px;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+        opacity: 0;
+        transform: translateY(10px);
+        animation: fadeInUp 0.3s forwards;
+      }
+
+      @keyframes fadeInUp {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .user {
+        align-self: flex-end;
+        border-left-color: var(--accent-user);
+      }
+
+      .assistant {
+        align-self: flex-start;
+        border-left-color: var(--accent-assistant);
+      }
+
+      .copy-btn, .action-btn {
+        position: absolute;
+        top: 8px;
+        background: none;
+        border: none;
+        font-size: 13px;
+        cursor: pointer;
+        padding: 4px 6px;
+        border-radius: 4px;
+        opacity: 0;
+        transition: all 0.2s ease;
+      }
+
+      .copy-btn {
+        right: 8px;
+        color: #aaa;
+      }
+
+      .action-btn {
+        right: 40px;
+        color: #66bb6a;
+        font-size: 12px;
+      }
+
+      .message:hover .copy-btn,
+      .message:hover .action-btn {
+        opacity: 1;
+      }
+
+      .message:hover .copy-btn:hover {
+        color: #fff;
+      }
+
+      .message:hover .action-btn:hover {
+        background: rgba(102, 187, 106, 0.2);
+      }
+
+      .input-area {
+        display: flex;
+        padding: 12px 16px;
+        background-color: var(--bg-primary);
+        border-top: 1px solid var(--border);
+        gap: 8px;
+      }
+
+      .input-area textarea {
+        flex: 1;
+        padding: 12px 16px;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        background-color: var(--input-bg);
+        color: var(--text);
+        resize: none;
+        outline: none;
+        max-height: 100px;
+        line-height: 1.4;
+      }
+
+      .input-area button {
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-size: 15px;
+        padding: 0 16px;
+        cursor: pointer;
+        min-width: 56px;
+      }
+
+      #sendBtn {
+        background-color: var(--btn-primary);
+      }
+
+      #sendBtn:hover:not(:disabled) {
+        background-color: var(--btn-hover);
+      }
+
+      #sendBtn:disabled {
+        background-color: #555;
+      }
+
+      .input-area button:not(#sendBtn) {
+        background: none;
+        color: #aaa;
+        font-size: 18px;
+      }
+
+      .input-area button:not(#sendBtn):hover {
+        color: white;
+      }
+
+      @media (max-width: 500px) {
+        .input-area {
+          flex-wrap: wrap;
+        }
+        .input-area > *:not(textarea) {
+          flex: 1;
+          min-width: 40px;
+          height: 36px;
+        }
+        .input-area textarea {
+          flex: 4;
+          margin-bottom: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+
+    <header>
+      <h1>🤖 Friday AI</h1>
+      <p>Smart coding assistant powered by LLaMA3</p>
+    </header>
+
+    <div class="chat" id="chat"></div>
+
+    <div class="input-area">
+      <textarea
+        id="userInput"
+        placeholder="Ask to write code, debug, or explain..."
+        rows="1"
+      ></textarea>
+      <button id="sendBtn" onclick="sendMessage()">➤</button>
+      <button title="Clear" onclick="clearChat()">🗑️</button>
+      <button title="Theme" onclick="toggleTheme()">🌓</button>
+      <button title="Export" onclick="exportChat()">💾</button>
+    </div>
+
+    <script>
+      const chat = document.getElementById("chat");
+      const userInput = document.getElementById("userInput");
+      const sendBtn = document.getElementById("sendBtn");
+
+      // === CONFIG ===
+      const GROQ_API_KEY = "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";
+      const API_URL = "https://api.groq.com/openai/v1/chat/completions";
+      const MODEL = "llama3-8b-8192";
+
+      let chatHistory = [
+        { role: "system", content: "You are Friday AI, a brilliant coding assistant. Always provide runnable, clean code with explanations when helpful. Use markdown code blocks with language tags." }
+      ];
+
+      let isStreaming = false;
+      let isAutoScroll = true;
+
+      // Auto-resize input
+      userInput.addEventListener("input", () => {
+        userInput.style.height = "auto";
+        const height = Math.min(userInput.scrollHeight, 100);
+        userInput.style.height = height + "px";
+      });
+
+      // Scroll lock
+      chat.addEventListener("scroll", () => {
+        const threshold = 50;
+        const position = chat.scrollHeight - chat.scrollTop - chat.clientHeight;
+        isAutoScroll = position < threshold;
+      });
+
+      // Append message
+      function appendMessage(role, content = "", streaming = false) {
+        const msg = document.createElement("div");
+        msg.className = `message ${role}`;
+        msg.dataset.tooltip = role === "user" ? "You" : "Friday";
+
+        const copyBtn = `<button class="copy-btn" onclick="copyToClipboard(this)">📋 Copy</button>`;
+        const contentHTML = `<div class="content">${content}</div>`;
+        msg.innerHTML = `<strong>${role === "user" ? "You" : "Friday"}:</strong><br>${contentHTML}${copyBtn}`;
+
+        if (streaming) {
+          msg.querySelector(".content").innerHTML += '<span class="cursor">▌</span>';
+        }
+
+        chat.appendChild(msg);
+        if (isAutoScroll) chat.scrollTop = chat.scrollHeight;
+
+        // Render markdown and highlight code
+        if (role === "assistant" && content) {
+          const el = msg.querySelector(".content");
+          el.innerHTML = marked.parse(content);
+          postProcessCodeBlocks(el);
+          if (streaming) el.innerHTML += '<span class="cursor">▌</span>';
+        }
+
+        return msg;
+      }
+
+      // Add copy & download buttons to code blocks
+      function postProcessCodeBlocks(container) {
+        container.querySelectorAll("pre code").forEach((block) => {
+          if (block.parentElement.querySelector(".action-btn")) return;
+
+          const lang = block.className.replace("language-", "") || "txt";
+          const code = block.textContent;
+
+          const downloadBtn = document.createElement("button");
+          downloadBtn.className = "action-btn";
+          downloadBtn.textContent = "💾 Save";
+          downloadBtn.onclick = () => {
+            const blob = new Blob([code], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `code.${lang}`;
+            a.click();
+          };
+
+          block.parentNode.style.position = "relative";
+          block.parentNode.appendChild(downloadBtn);
+        });
+
+        // Re-highlight after update
+        setTimeout(() => Prism.highlightAll(), 10);
+      }
+
+      // Send message
+function sendMessage() {
+  const input = userInput.value.trim();
+  if (!input || isStreaming) return;
+
+  console.log("User input:", input); // Debug: user input
+
+  appendMessage("user", input);
+  chatHistory.push({ role: "user", content: input });
+
+  userInput.value = "";
+  userInput.style.height = "auto";
+  sendBtn.disabled = true;
+  isStreaming = true;
+
+  const assistantMsg = appendMessage("assistant", "", true);
+
+  console.log("Sending API request..."); // Debug: before fetch
+
+  fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${GROQ_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: chatHistory,
+      temperature: 0.5,
+      stream: true
+    })
+  })
+  .then(async (response) => {
+    console.log("API response received:", response); // Debug: response object
+
+    if (!response.body) throw new Error("No stream");
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let fullText = "";
+
+    function read() {
+      reader.read().then(({ done, value }) => {
+        if (done) {
+          console.log("Streaming done. Full text:", fullText); // Debug: streaming finished
+          const el = assistantMsg.querySelector(".content");
+          el.innerHTML = marked.parse(fullText);
+          postProcessCodeBlocks(el);
+          chatHistory.push({ role: "assistant", content: fullText });
+          isStreaming = false;
+          sendBtn.disabled = false;
+          if (isAutoScroll) chat.scrollTop = chat.scrollHeight;
+          return;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6).trim();
+            if (data === "[DONE]") continue;
+            try {
+              const json = JSON.parse(data);
+              const token = json.choices?.[0]?.delta?.content || "";
+              if (token) {
+                fullText += token;
+                console.log("Streaming token:", token); // Debug: streaming token
+                const el = assistantMsg.querySelector(".content");
+                el.innerHTML = marked.parse(fullText) + '<span class="cursor">▌</span>';
+                postProcessCodeBlocks(el);
+                if (isAutoScroll) chat.scrollTop = chat.scrollHeight;
+              }
+            } catch (e) {
+              console.error("JSON parse error:", e); // Debug: JSON parse error
+            }
+          }
+        }
+        read();
+      }).catch(handleError);
+    }
+
+    function handleError(err) {
+      console.error("Stream error:", err); // Debug: stream/network error
+      assistantMsg.querySelector(".content").innerText = `⚠️ Error: ${err.message}`;
+      isStreaming = false;
+      sendBtn.disabled = false;
+    }
+
+    read();
+  })
+  .catch(handleError);
+
+  function handleError(err) {
+    console.error("Network error:", err); // Debug: network fetch error
+    assistantMsg.querySelector(".content").innerText = `⚠️ Network error: ${err.message}`;
+    isStreaming = false;
+    sendBtn.disabled = false;
+  }
+}
+
+      // Copy to clipboard
+      window.copyToClipboard = (btn) => {
+        const code = btn.previousElementSibling.querySelector("code").textContent;
+        navigator.clipboard.writeText(code).then(() => {
+          btn.textContent = "✅ Copied";
+          setTimeout(() => (btn.textContent = "📋 Copy"), 1000);
+        });
+      };
+
+      // Clear chat
+      window.clearChat = () => {
+        if (confirm("Clear chat?")) {
+          chat.innerHTML = "";
+          chatHistory = [{ role: "system", content: "You are Friday AI, a brilliant coding assistant." }];
+        }
+      };
+
+      // Export chat
+      window.exportChat = () => {
+        const data = JSON.stringify(chatHistory, null, 2);
+        const blob = new Blob([data], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `friday-chat-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+      };
+
+      // Theme toggle
+      window.toggleTheme = () => {
+        document.body.classList.toggle("light-mode");
+        localStorage.setItem("theme", document.body.classList.contains("light-mode") ? "light" : "dark");
+      };
+
+      // Restore theme
+      if (localStorage.getItem("theme") === "light") {
+        document.body.classList.add("light-mode");
+      }
+
+      // Enter to send
+      userInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+    </script>
+  </body>
+</html>
